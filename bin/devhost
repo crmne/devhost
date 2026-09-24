@@ -86,7 +86,7 @@ render() {
     echo "}"
     for route in "$ROUTES_DIR"/*; do
       [[ -f "$route" ]] || continue
-      host="$(basename "$route")"
+      host="$(basename -- "$route")"
       echo
       echo "$host {"
       echo "	reverse_proxy $(<"$route")"
@@ -142,7 +142,7 @@ list() {
     [[ -f "$route" ]] || continue
     upstream="$(<"$route")"
     if listening "$upstream"; then state="up"; else state="down"; fi
-    printf '%-50s %-20s %s\n' "https://$(basename "$route")" "$upstream" "$state"
+    printf '%-50s %-20s %s\n' "https://$(basename -- "$route")" "$upstream" "$state"
   done
 }
 
@@ -204,7 +204,7 @@ run() {
   # so pass the port and load the plugin that restores the devhost URL.
   local args=("$@") i
   for ((i = 0; i < ${#args[@]} - 1; i++)); do
-    if [[ "$(basename "${args[i]}")" == "jekyll" && "${args[i + 1]}" =~ ^(serve|server|s)$ ]]; then
+    if [[ "$(basename -- "${args[i]}")" == "jekyll" && "${args[i + 1]}" =~ ^(serve|server|s)$ ]]; then
       [[ " ${args[*]} " =~ \ (-P|--port)[\ =] ]] || args+=(--port "$port")
       [[ " ${args[*]} " =~ \ (-p|--plugins)[\ =] ]] || args+=(--plugins "$(jekyll_plugins_dir),$DEVHOST_ROOT/jekyll")
       break
