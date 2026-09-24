@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# One-time privileged setup for devhost. Run as your user; it calls sudo itself:
+#   ~/Code/devhost/bin/devhost-system-setup
+set -euo pipefail
+
+CA_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/caddy/pki/authorities/local/root.crt"
+HOOK=/etc/pacman.d/hooks/devhost-caddy-bind.hook
+
+[[ $EUID -ne 0 ]] || { echo "Run this as your user, not root; it uses sudo where needed." >&2; exit 1; }
+
+echo "== 1. Install Caddy (and nss for certutil) from the Arch repos"
+sudo pacman -S --needed --noconfirm caddy nss
+
+echo "== 2. Let the caddy binary bind ports 80 and 443 without running as root"
+sudo setcap cap_net_bind_service=+ep /usr/bin/caddy
+
+echo "== 3. Reapply that capability whenever pacman upgrades caddy"
+sudo mkdir -p "$(dirname "$HOOK")"
+sudo tee "$HOOK" >/dev/null <<'HOOK'
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = caddy
+
+[Action]
+Description = Allowing caddy to bind ports below 1024 (devhost)...
+When = PostTransaction
+Exec = /usr/bin/setcap cap_net_bind_service=+ep /usr/bin/caddy
+HOOK
+
+echo "== 4. Keep the packaged system-wide Caddy off ports 80/443 (devhost runs Caddy as your user)"
+sudo systemctl disable --now caddy.service 2>/dev/null || true
+
+echo "== 5. Trust devhost's Caddy CA system-wide (curl, Ruby, Go, Node via the system bundle)"
+if [[ ! -f "$CA_ROOT" ]]; then
+  systemctl --user start devhost
+  for _ in $(seq 20); do [[ -f "$CA_ROOT" ]] && break; sleep 0.5; done
+fi
+[[ -f "$CA_ROOT" ]] || { echo "No Caddy CA at $CA_ROOT; run: systemctl --user start devhost, then rerun this." >&2; exit 1; }
+sudo trust anchor --store "$CA_ROOT"
+
+echo
+echo "Done. Now, as your user:"
+echo "  systemctl --user restart devhost && devhost trust && devhost doctor"

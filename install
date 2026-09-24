@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# User-level install: puts devhost on your PATH and runs Caddy as a systemd user service.
+set -euo pipefail
+root="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+mkdir -p "$HOME/.local/bin" "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+ln -sfn "$root/bin/devhost" "$HOME/.local/bin/devhost"
+ln -sfn "$root/systemd/devhost.service" "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/devhost.service"
+systemctl --user daemon-reload
+systemctl --user enable devhost.service
+if command -v caddy >/dev/null; then
+  systemctl --user restart devhost.service
+else
+  echo "Caddy is not installed yet. Run $root/bin/devhost-system-setup, then: systemctl --user start devhost"
+fi

@@ -1,0 +1,16 @@
+[Unit]
+Description=devhost HTTPS proxy for *.localhost dev servers (Caddy)
+Documentation=https://caddyserver.com/docs/
+
+[Service]
+Type=notify
+RuntimeDirectory=devhost
+RuntimeDirectoryMode=0700
+ExecStartPre=%h/.local/bin/devhost render
+ExecStart=/usr/bin/caddy run --config %h/.config/devhost/Caddyfile --adapter caddyfile
+ExecReload=/usr/bin/caddy reload --config %h/.config/devhost/Caddyfile --adapter caddyfile --address unix/%t/devhost/admin.sock --force
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
