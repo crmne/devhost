@@ -244,15 +244,15 @@ check() {
 doctor() {
   check "caddy is installed" "command -v $CADDY" "run $DEVHOST_ROOT/bin/devhost-system-setup"
   check "unprivileged processes may bind port $HTTP_PORT" \
-    "(( \$(sysctl -n net.ipv4.ip_unprivileged_port_start) <= $HTTP_PORT )) || getcap \$(command -v $CADDY) | grep -q cap_net_bind_service" \
+    "(( \$(sysctl -n net.ipv4.ip_unprivileged_port_start) <= $HTTP_PORT )) || getcap \$(command -v $CADDY) | grep cap_net_bind_service >/dev/null" \
     "run $DEVHOST_ROOT/bin/devhost-system-setup"
   check "devhost service is running" "systemctl --user is-active devhost" "systemctl --user start devhost"
   check "Caddy admin socket exists" "test -S $ADMIN_SOCKET"
   check "Caddy CA exists" "test -f $CA_ROOT"
   check "Caddy CA is in the system trust store" \
-    "trust list --filter=ca-anchors | grep -q 'Caddy Local Authority - [0-9]* ECC Root'" "run $DEVHOST_ROOT/bin/devhost-system-setup"
+    "trust list --filter=ca-anchors | grep 'Caddy Local Authority - [0-9]* ECC Root' >/dev/null" "run $DEVHOST_ROOT/bin/devhost-system-setup"
   check "Caddy CA is in the Chromium NSS database" "certutil -L -d $NSS_DB -n '$NSS_NICKNAME'" "devhost trust"
-  check "*.localhost resolves to loopback" "getent hosts devhost-check.localhost | grep -qE '^(127\\.|::1)'"
+  check "*.localhost resolves to loopback" "getent hosts devhost-check.localhost | grep -E '^(127\\.|::1)' >/dev/null"
 }
 
 command="${1:-help}"
